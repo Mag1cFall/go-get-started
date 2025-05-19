@@ -3,9 +3,39 @@ package main
 import (
 	"fmt"
 	"net/http" // 导入 net/http 包，Gin 内部使用它，并且我们也用它来定义状态码
+	"time"     // <--- 添加 time 包的导入，用于中间件
 
 	"github.com/gin-gonic/gin" // 导入 Gin 包
 )
+
+// SimpleLoggerMiddleware 是一个简单的自定义日志中间件
+// 中间件本质上是一个 gin.HandlerFunc
+func SimpleLoggerMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		raw := c.Request.URL.RawQuery
+
+		// 在请求处理之前可以做一些事情
+		fmt.Printf("[自定义中间件] 请求开始: %s %s\n", c.Request.Method, path)
+
+		// 调用 c.Next() 来执行后续的处理器 (包括其他中间件和路由处理器)
+		c.Next()
+
+		// 在请求处理之后可以做一些事情
+		latency := time.Since(start)
+		statusCode := c.Writer.Status()
+		if raw != "" {
+			path = path + "?" + raw
+		}
+		fmt.Printf("[自定义中间件] 请求完成: %s | %3d | %13v | %s \n",
+			path,
+			statusCode,
+			latency,
+			c.ClientIP(),
+		)
+	}
+}
 
 func main() {
 	fmt.Println("--- 第6周学习：Gin 框架入门 (简单服务器与路由) ---")
@@ -140,7 +170,52 @@ func main() {
 		}
 	})
 
-	// --- 6. 启动 Gin 服务器 ---
+	// --- 6. 返回 HTML 响应 ---
+	// Gin 可以加载和渲染 HTML 模板。为了简单起见，这里我们直接返回 HTML 字符串。
+	// 更复杂的场景会使用 router.LoadHTMLGlob("templates/*") 或 router.LoadHTMLFiles("template1.html", "template2.html")
+	// 然后在处理器中使用 c.HTML(http.StatusOK, "templateName.html", data)
+	router.GET("/html_page", func(c *gin.Context) {
+		htmlContent := `
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<title>Gin HTML Page</title>
+			</head>
+			<body>
+				<h1>你好，来自 Gin 的 HTML 页面!</h1>
+				<p>这是一个通过 c.Data() 直接返回的简单 HTML 示例。</p>
+			</body>
+			</html>
+		`
+		// c.Data(statusCode, contentType, data []byte)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(htmlContent))
+	})
+
+	// --- 7. 中间件 (Middleware) ---
+	// Gin 引擎默认使用了 Logger 和 Recovery 中间件。
+	// Logger: 记录每个请求的日志到控制台。
+	// Recovery: 捕获任何 panic 并返回 500 错误，防止服务器崩溃。
+
+	// a) 使用我们定义在包级别的 SimpleLoggerMiddleware
+	// router.Use(middleware ...gin.HandlerFunc) 可以注册全局中间件，对所有路由生效。
+	router.Use(SimpleLoggerMiddleware()) // <--- 使用移到包级别的中间件
+
+	// b) 也可以为特定的路由或路由组注册中间件
+	adminGroup := router.Group("/admin")
+	adminGroup.Use(func(c *gin.Context) { // 另一个简单的内联中间件
+		fmt.Println("[Admin中间件] 检查管理员权限...")
+		// 假设这里有一些权限检查逻辑
+		// if !isAdmin { c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error":"无权限"}); return }
+		c.Next()
+		fmt.Println("[Admin中间件] 管理员权限检查通过。")
+	})
+	{
+		adminGroup.GET("/dashboard", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "欢迎来到管理员面板!"})
+		})
+	}
+
+	// --- 8. 启动 Gin 服务器 ---
 	// router.Run() 启动 HTTP 服务器，并监听指定的地址和端口。
 	// 如果不提供参数，默认监听 ":8080"。
 	// 你也可以指定其他端口，例如 router.Run(":8888")。
@@ -153,6 +228,10 @@ func main() {
 	fmt.Printf("  http://localhost%s/search?query=Go&sort=asc (查询参数)\n", port)
 	fmt.Printf("  http://localhost%s/api/v1/users (路由组)\n", port)
 	fmt.Printf("  http://localhost%s/api/v1/products (路由组)\n", port)
+	fmt.Printf("  POST http://localhost%s/form_post (Form表单)\n", port)
+	fmt.Printf("  POST http://localhost%s/login_json (JSON Body与绑定校验)\n", port)
+	fmt.Printf("  http://localhost%s/html_page (HTML响应)\n", port)
+	fmt.Printf("  http://localhost%s/admin/dashboard (带中间件的路由组)\n", port)
 
 	// Run 会阻塞当前 Goroutine，直到服务器发生错误或被关闭。
 	// 如果发生错误，它会 panic。
