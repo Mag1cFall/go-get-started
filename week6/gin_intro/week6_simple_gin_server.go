@@ -92,7 +92,55 @@ func main() {
 		})
 	} // 结束 apiV1 组
 
-	// --- 5. 启动 Gin 服务器 ---
+	// --- 5. 获取请求数据 (Form表单, JSON Body) 与参数绑定校验 ---
+	// a) 处理 POST Form 表单数据
+	// 客户端可以用 application/x-www-form-urlencoded 或 multipart/form-data 发送
+	router.POST("/form_post", func(c *gin.Context) {
+		// c.PostForm(key string) 获取表单字段的值
+		message := c.PostForm("message")
+		// c.DefaultPostForm(key, defaultValue string) 获取表单字段，若不存在则用默认值
+		nick := c.DefaultPostForm("nick", "anonymous")
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "posted",
+			"message": message,
+			"nick":    nick,
+		})
+	})
+
+	// b) 处理 POST JSON Body 数据并绑定到结构体
+	type LoginPayload struct {
+		// `binding:"required"` 标签表示该字段是必需的
+		// Gin 使用 `github.com/go-playground/validator/v10` 进行校验
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required,min=6"` // 密码至少6位
+		Email    string `json:"email" binding:"omitempty,email"`   // 可选，但如果是，则必须是email格式
+	}
+
+	router.POST("/login_json", func(c *gin.Context) {
+		var loginData LoginPayload
+
+		// c.ShouldBindJSON(&obj) 会尝试将请求的 JSON body 绑定到 loginData 结构体。
+		// 如果绑定失败或校验失败 (基于 struct tags)，会返回错误。
+		if err := c.ShouldBindJSON(&loginData); err != nil {
+			// 如果校验失败，返回 400 Bad Request 错误，并附带错误信息
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// 校验通过，处理登录逻辑 (此处仅为演示)
+		if loginData.Username == "testuser" && loginData.Password == "123456" {
+			c.JSON(http.StatusOK, gin.H{
+				"status":   "login successful",
+				"username": loginData.Username,
+				"email":    loginData.Email, // Email 会被正确绑定，即使它是可选的
+			})
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "login failed", "message": "Invalid credentials"})
+		}
+	})
+
+	// --- 6. 启动 Gin 服务器 ---
 	// router.Run() 启动 HTTP 服务器，并监听指定的地址和端口。
 	// 如果不提供参数，默认监听 ":8080"。
 	// 你也可以指定其他端口，例如 router.Run(":8888")。
