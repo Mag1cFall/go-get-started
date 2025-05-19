@@ -1,4 +1,4 @@
-# Go 学习之旅 (AI辅助教学)
+# Go 学习之旅 (Pure-100%-AI-Generated)
 
 本仓库所有代码示例及注释均由 AI (Google Gemini 2.5 Pro Preview, 模型版本 05-06) 生成，旨在通过“代码示例 + 详细注释”的模式，系统性地辅助初学者学习 Go 语言。
 
