@@ -2,10 +2,10 @@ package main
 
 import "fmt"
 
-func main() {
+func originalMain() { // <--- 注意这里，main 已被重命名为 originalMain
 	// fmt.Println 是一个函数调用，用于在控制台打印一行文本。
 	// Println 中的 "ln" 代表 "line"，表示打印后会换行。
-	fmt.Println("Hello From VS Code and Git!")
+	fmt.Println("Hello From VS Code and Git! (from originalMain)")
 
 	// 声明一个整型变量并赋值
 	// var 关键字用于声明变量，age 是变量名，int 是类型，18 是初始值。
@@ -56,7 +56,7 @@ func main() {
 	// }
 
 	// 调用一个自定义函数
-	message := sayHello("Go初学者")
+	message := sayHelloOriginal("Go初学者") // <--- sayHello 也重命名以避免与新代码中的函数潜在冲突
 	fmt.Println(message)
 }
 
@@ -65,7 +65,7 @@ func main() {
 // sayHello 是函数名
 // (personName string) 是参数列表，personName 是参数名，string 是参数类型
 // string 是返回值类型
-func sayHello(personName string) string {
+func sayHelloOriginal(personName string) string { // <--- sayHello 也重命名
 	// fmt.Sprintf 用于格式化字符串，但不会打印出来，而是返回格式化后的字符串
-	return fmt.Sprintf("你好, %s! 欢迎学习 Go。", personName)
+	return fmt.Sprintf("你好, %s! 欢迎学习 Go。(from sayHelloOriginal)", personName)
 }
