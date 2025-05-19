@@ -46,14 +46,53 @@ func main() {
 
 	// GET 请求带路径参数
 	// 路径参数以冒号 : 开头，例如 :name
-	router.GET("/hello/:name", func(c *gin.Context) {
+	router.GET("/user/:name", func(c *gin.Context) { // 路径修改为 /user/:name 以区分
 		// c.Param(key string) 用于获取路径参数的值。
 		name := c.Param("name")
-		message := fmt.Sprintf("你好, %s! Welcome to Gin!", name)
-		c.String(http.StatusOK, message)
+		message := fmt.Sprintf("你好用户, %s!", name)
+		c.JSON(http.StatusOK, gin.H{"user_message": message}) // 返回JSON
 	})
 
-	// --- 4. 启动 Gin 服务器 ---
+	// 获取查询参数 (Query Parameters)
+	// 例如: /search?query=golang&sort=asc
+	router.GET("/search", func(c *gin.Context) {
+		// c.Query(key string) 获取指定名称的查询参数。如果不存在，返回空字符串。
+		query := c.Query("query")
+		// c.DefaultQuery(key, defaultValue string) 获取查询参数，如果不存在，则使用指定的默认值。
+		sortOrder := c.DefaultQuery("sort", "desc") // 默认降序
+
+		c.JSON(http.StatusOK, gin.H{
+			"search_term": query,
+			"sorted_by":   sortOrder,
+			"results":     []string{fmt.Sprintf("结果1 for %s", query), fmt.Sprintf("结果2 for %s", query)},
+		})
+	})
+
+	// --- 4. 路由组 (Route Grouping) ---
+	// 路由组允许我们将具有共同前缀或共同中间件的路由组织在一起。
+	// 例如，所有 /api/v1/... 的路由可以放在一个组里。
+	apiV1 := router.Group("/api/v1")
+	{ // 这个花括号只是为了视觉上的组织，不是必需的
+		// /api/v1/users
+		apiV1.GET("/users", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"group":    "v1",
+				"resource": "users",
+				"data":     []string{"userA", "userB", "userC"},
+			})
+		})
+
+		// /api/v1/products
+		apiV1.GET("/products", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"group":    "v1",
+				"resource": "products",
+				"data":     []string{"productX", "productY"},
+			})
+		})
+	} // 结束 apiV1 组
+
+	// --- 5. 启动 Gin 服务器 ---
 	// router.Run() 启动 HTTP 服务器，并监听指定的地址和端口。
 	// 如果不提供参数，默认监听 ":8080"。
 	// 你也可以指定其他端口，例如 router.Run(":8888")。
@@ -62,7 +101,10 @@ func main() {
 	fmt.Printf("请在浏览器或工具中访问:\n")
 	fmt.Printf("  http://localhost%s/\n", port)
 	fmt.Printf("  http://localhost%s/ping\n", port)
-	fmt.Printf("  http://localhost%s/hello/你的名字\n", port)
+	fmt.Printf("  http://localhost%s/user/你的名字 (路径参数)\n", port)
+	fmt.Printf("  http://localhost%s/search?query=Go&sort=asc (查询参数)\n", port)
+	fmt.Printf("  http://localhost%s/api/v1/users (路由组)\n", port)
+	fmt.Printf("  http://localhost%s/api/v1/products (路由组)\n", port)
 
 	// Run 会阻塞当前 Goroutine，直到服务器发生错误或被关闭。
 	// 如果发生错误，它会 panic。
